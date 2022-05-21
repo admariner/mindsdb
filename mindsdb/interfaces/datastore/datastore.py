@@ -51,25 +51,24 @@ class QueryDS:
         )
 
         query = self.query
-        if self.source_type == 'view_query':
-            if isinstance(query, str):
-                query = parse_sql(query, dialect='mysql')
-
-            table = query.from_table.parts[-1]
-            view_metadata = view_interface.get(name=table)
-
-            integration = integration_controller.get_by_id(view_metadata['integration_id'])
-            integration_name = integration['name']
-
-            dataset_name = data_store.get_vacant_name(table)
-            data_store.save_datasource(dataset_name, integration_name, {'query': view_metadata['query']})
-            try:
-                dataset_object = data_store.get_datasource_obj(dataset_name)
-                data_df = dataset_object.df
-            finally:
-                data_store.delete_datasource(dataset_name)
-        else:
+        if self.source_type != 'view_query':
             raise Exception(f'Unknown source_type: {self.source_type}')
+        if isinstance(query, str):
+            query = parse_sql(query, dialect='mysql')
+
+        table = query.from_table.parts[-1]
+        view_metadata = view_interface.get(name=table)
+
+        integration = integration_controller.get_by_id(view_metadata['integration_id'])
+        integration_name = integration['name']
+
+        dataset_name = data_store.get_vacant_name(table)
+        data_store.save_datasource(dataset_name, integration_name, {'query': view_metadata['query']})
+        try:
+            dataset_object = data_store.get_datasource_obj(dataset_name)
+            data_df = dataset_object.df
+        finally:
+            data_store.delete_datasource(dataset_name)
         return data_df
 
 
@@ -87,8 +86,7 @@ class DataStore():
         analysis_record = session.query(Analysis).get(dataset_record.analysis_id)
         if analysis_record is None:
             return None
-        analysis = json.loads(analysis_record.analysis)
-        return analysis
+        return json.loads(analysis_record.analysis)
 
     def start_analysis(self, name, company_id=None):
         dataset_record = session.query(Dataset).filter_by(company_id=company_id, name=name).first()
@@ -101,18 +99,17 @@ class DataStore():
             entity_type='dataset'
         ).first()
 
-        if semaphor_record is None:
-            semaphor_record = Semaphor(
-                company_id=company_id,
-                entity_id=dataset_record.id,
-                entity_type='dataset',
-                action='write'
-            )
-            session.add(semaphor_record)
-            session.commit()
-        else:
+        if semaphor_record is not None:
             return
 
+        semaphor_record = Semaphor(
+            company_id=company_id,
+            entity_id=dataset_record.id,
+            entity_type='dataset',
+            action='write'
+        )
+        session.add(semaphor_record)
+        session.commit()
         try:
             analysis = self.model_interface.analyse_dataset(
                 ds=self.get_datasource_obj(name, raw=True, company_id=company_id),
@@ -170,10 +167,10 @@ class DataStore():
         }
 
     def get_data(self, name, where=None, limit=None, offset=None, company_id=None):
-        offset = 0 if offset is None else offset
         ds = self.get_datasource_obj(name, company_id=company_id)
 
         if limit is not None:
+            offset = 0 if offset is None else offset
             # @TODO Add `offset` to the `filter` method of the datasource and get rid of `offset`
             filtered_ds = ds.filter(where=where, limit=limit + offset).iloc[offset:]
         else:
@@ -200,9 +197,13 @@ class DataStore():
     def delete_datasource(self, name, company_id=None):
         dataset_record = Dataset.query.filter_by(company_id=company_id, name=name).first()
         if not Config()["force_dataset_removing"]:
-            linked_models = Predictor.query.filter_by(company_id=company_id, dataset_id=dataset_record.id).all()
-            if linked_models:
-                raise Exception("Can't delete {} dataset because there are next models linked to it: {}".format(name, [model.name for model in linked_models]))
+            if linked_models := Predictor.query.filter_by(
+                company_id=company_id, dataset_id=dataset_record.id
+            ).all():
+                raise Exception(
+                    f"Can't delete {name} dataset because there are next models linked to it: {[model.name for model in linked_models]}"
+                )
+
         session.query(Semaphor).filter_by(
             company_id=company_id, entity_id=dataset_record.id, entity_type='dataset'
         ).delete()
@@ -441,12 +442,14 @@ class DataStore():
                 list[dict]: files metadata
         """
         file_records = session.query(File).filter_by(company_id=company_id).all()
-        files_metadata = [{
-            'name': record.name,
-            'row_count': record.row_count,
-            'columns': record.columns,
-        } for record in file_records]
-        return files_metadata
+        return [
+            {
+                'name': record.name,
+                'row_count': record.row_count,
+                'columns': record.columns,
+            }
+            for record in file_records
+        ]
 
     def save_file(self, name, file_path, file_name=None, company_id=None):
         """ Save the file to our store
@@ -588,12 +591,11 @@ class DataStore():
             creation_info = json.loads(dataset_record.creation_info)
             if raw:
                 return creation_info
-            else:
-                if dataset_record.ds_class == 'FileDS':
-                    file_record = session.query(File).filter_by(company_id=company_id, name=name).first()
-                    if file_record is not None:
-                        self.fs_store.get(f'{company_id}@@@@@{dataset_record.name}', f'file_{company_id}_{file_record.id}', self.dir)
-                return eval(creation_info['class'])(*creation_info['args'], **creation_info['kwargs'])
+            if dataset_record.ds_class == 'FileDS':
+                file_record = session.query(File).filter_by(company_id=company_id, name=name).first()
+                if file_record is not None:
+                    self.fs_store.get(f'{company_id}@@@@@{dataset_record.name}', f'file_{company_id}_{file_record.id}', self.dir)
+            return eval(creation_info['class'])(*creation_info['args'], **creation_info['kwargs'])
         except Exception as e:
             log.error(f'Error getting dataset {name}, exception: {e}')
             return None

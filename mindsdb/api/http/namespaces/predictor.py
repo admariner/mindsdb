@@ -17,8 +17,7 @@ class PredictorList(Resource):
     @ns_conf.doc('list_predictors')
     def get(self):
         '''List all predictors'''
-        models = request.model_interface.get_models()
-        return models
+        return request.model_interface.get_models()
 
 
 @ns_conf.route('/<name>')
@@ -53,7 +52,7 @@ class Predictor(Resource):
         except Exception:
             kwargs = None
 
-        if isinstance(kwargs, dict) is False:
+        if not isinstance(kwargs, dict):
             kwargs = {}
 
         if 'equal_accuracy_for_all_output_categories' not in kwargs:
@@ -67,10 +66,7 @@ class Predictor(Resource):
 
         try:
             retrain = data.get('retrain')
-            if retrain in ('true', 'True'):
-                retrain = True
-            else:
-                retrain = False
+            retrain = retrain in ('true', 'True')
         except Exception:
             retrain = None
 
@@ -112,7 +108,7 @@ class Predictor(Resource):
 
         if retrain is True:
             original_name = name
-            name = name + '_retrained'
+            name = f'{name}_retrained'
 
         model_names = [x['name'] for x in request.model_interface.get_models()]
         if name in model_names:
@@ -183,11 +179,10 @@ class PredictorPredict(Resource):
         when = request.json.get('when')
 
         # list is a required type for TS prediction
-        if isinstance(when, (dict, list)) is False or len(when) == 0:
+        if not isinstance(when, (dict, list)) or len(when) == 0:
             return 'No data provided for the predictions', 400
 
-        results = request.model_interface.predict(name, when, 'explain')
-        return results
+        return request.model_interface.predict(name, when, 'explain')
 
 
 @ns_conf.route('/<name>/predict_datasource')
@@ -202,8 +197,7 @@ class PredictorPredictFromDataSource(Resource):
         if from_data is None:
             abort(400, 'No valid datasource given')
 
-        results = request.model_interface.predict(name, from_data, 'explain')
-        return results
+        return request.model_interface.predict(name, from_data, 'explain')
 
 
 @ns_conf.route('/<name>/rename')
@@ -270,7 +264,7 @@ class PredictorTrain(Resource):
     def put(self, name):
         for param in ['data_source_name']:
             if param not in request.json:
-                return abort(400, 'Please provide {}'.format(param))
+                return abort(400, f'Please provide {param}')
 
         from_data = request.default_store.get_datasource_obj(
             request.json['data_source_name'],

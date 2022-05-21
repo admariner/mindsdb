@@ -127,10 +127,7 @@ class IntegrationDataNode(DataNode):
         if isinstance(query, str):
             query_str = query
         else:
-            if self.ds_type in ('postgres', 'snowflake'):
-                dialect = 'postgres'
-            else:
-                dialect = 'mysql'
+            dialect = 'postgres' if self.ds_type in ('postgres', 'snowflake') else 'mysql'
             render = SqlalchemyRender(dialect)
             try:
                 query_str = render.get_string(query, with_failback=False)
@@ -148,7 +145,7 @@ class IntegrationDataNode(DataNode):
                 for i, rec in enumerate(data):
                     rec[column_name] = pass_data[i].timestamp()
 
-        if len(column_names) == 0:
+        if not column_names:
             column_names = ['dataframe_is_empty']
 
         columns_info = [

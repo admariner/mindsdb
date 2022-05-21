@@ -48,8 +48,7 @@ class MySQLHandler(DatabaseHandler):
             if self.ssl_key is not None:
                 config["ssl_key"] = self.ssl_key
 
-        connection = mysql.connector.connect(**config)
-        return connection
+        return mysql.connector.connect(**config)
 
     def check_status(self):
         """
@@ -107,24 +106,21 @@ class MySQLHandler(DatabaseHandler):
         Get a list with all of the tabels in MySQL
         """
         q = "SHOW TABLES;"
-        result = self.native_query(q)
-        return result
+        return self.native_query(q)
 
     def get_views(self):
         """
         Get more information about specific database views
         """
         q = f"SHOW FULL TABLES IN {self.database} WHERE TABLE_TYPE LIKE 'VIEW';"
-        result = self.native_query(q)
-        return result
+        return self.native_query(q)
 
     def describe_table(self, table_name):
         """
         Show details about the table
         """
         q = f"DESCRIBE {table_name};"
-        result = self.native_query(q)
-        return result
+        return self.native_query(q)
 
     def select_query(self, query):
         """

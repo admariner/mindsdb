@@ -26,16 +26,16 @@ class CassandraConnectionChecker:
             if self.protocol_version is not None:
                 connection_props['protocol_version'] = self.protocol_version
 
-            if self.secure_connect_bundle is not None:
-                if os.path.isfile(self.secure_connect_bundle) is False:
-                    raise Exception("'secure_connect_bundle' must be path to the file")
-                connection_props['cloud'] = {
-                    'secure_connect_bundle': self.secure_connect_bundle
-                }
-            else:
+            if self.secure_connect_bundle is None:
                 connection_props['contact_points'] = [self.host]
                 connection_props['port'] = self.port
 
+            elif os.path.isfile(self.secure_connect_bundle) is False:
+                raise Exception("'secure_connect_bundle' must be path to the file")
+            else:
+                connection_props['cloud'] = {
+                    'secure_connect_bundle': self.secure_connect_bundle
+                }
             cluster = Cluster(**connection_props)
             session = cluster.connect()
 

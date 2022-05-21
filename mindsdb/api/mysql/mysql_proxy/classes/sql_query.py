@@ -100,9 +100,7 @@ def get_all_tables(stmt):
         from_stmt = stmt.from_table
     elif isinstance(stmt, (Identifier, Join)):
         from_stmt = stmt
-    elif isinstance(stmt, Insert):
-        from_stmt = stmt.table
-    elif isinstance(stmt, Delete):
+    elif isinstance(stmt, (Insert, Delete)):
         from_stmt = stmt.table
     else:
         # raise SqlApiException(f'Unknown type of identifier: {stmt}')
@@ -165,10 +163,10 @@ def join_query_data(target, source):
 
 def is_empty_prediction_row(predictor_value):
     "Define empty rows in predictor after JOIN"
-    for key in predictor_value:
-        if predictor_value[key] is not None and pd.notna(predictor_value[key]):
-            return False
-    return True
+    return not any(
+        predictor_value[key] is not None and pd.notna(predictor_value[key])
+        for key in predictor_value
+    )
 
 
 class Column:
@@ -363,7 +361,7 @@ class SQLQuery():
 
         for var_group in vars:
             for substep in step.steps:
-                if isinstance(substep, FetchDataframeStep) is False:
+                if not isinstance(substep, FetchDataframeStep):
                     raise Exception(f'Wrong step type for MultipleSteps: {step}')
                 markQueryVar(substep.query.where)
             for name, value in var_group.items():
@@ -463,18 +461,17 @@ class SQLQuery():
 
             statement_info = self.planner.get_statement_info()
 
-            self.columns_list = []
-            for col in statement_info['columns']:
-                self.columns_list.append(
-                    Column(
-                        database=col['ds'],
-                        table_name=col['table_name'],
-                        table_alias=col['table_alias'],
-                        name=col['name'],
-                        alias=col['alias'],
-                        type=col['type']
-                    )
+            self.columns_list = [
+                Column(
+                    database=col['ds'],
+                    table_name=col['table_name'],
+                    table_alias=col['table_alias'],
+                    name=col['name'],
+                    alias=col['alias'],
+                    type=col['type'],
                 )
+                for col in statement_info['columns']
+            ]
 
             self.parameters = [
                 Column(
@@ -500,7 +497,7 @@ class SQLQuery():
         self.query = self.planner.query
 
         # there was no executing
-        if len(steps_data) == 0:
+        if not steps_data:
             return
 
         try:
@@ -575,17 +572,17 @@ class SQLQuery():
                 if self.fetched_data is not None:
                     for table_name in self.fetched_data['columns']:
                         col_types = self.fetched_data['types'].get(table_name, {})
-                        for column in self.fetched_data['columns'][table_name]:
-                            self.columns_list.append(
-                                Column(
-                                    database=table_name[0],
-                                    table_name=table_name[1],
-                                    table_alias=table_name[2],
-                                    name=column[0],
-                                    alias=column[1],
-                                    type=col_types.get(column[0])
-                                )
+                        self.columns_list.extend(
+                            Column(
+                                database=table_name[0],
+                                table_name=table_name[1],
+                                table_alias=table_name[2],
+                                name=column[0],
+                                alias=column[1],
+                                type=col_types.get(column[0]),
                             )
+                            for column in self.fetched_data['columns'][table_name]
+                        )
 
             self.columns_list = [x for x in self.columns_list if x.name != '__mindsdb_row_id']
         except Exception as e:

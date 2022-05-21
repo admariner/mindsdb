@@ -54,7 +54,7 @@ class MindsDBDataNode(DataNode):
     def _get_model_columns(self, table_name):
         model = self.model_interface.get_model_data(name=table_name)
         dtype_dict = model.get('dtype_dict')
-        if isinstance(dtype_dict, dict) is False:
+        if not isinstance(dtype_dict, dict):
             return []
         columns = []
         columns += list(dtype_dict.keys())
