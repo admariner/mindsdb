@@ -401,19 +401,19 @@ class HTTPTest(unittest.TestCase):
         '''
         print(f'\nExecuting {inspect.stack()[0].function}')
         created_db_names = []
+        queries = [
+            {
+                'create': 'CREATE DATASOURCE',
+                'drop': 'DROP DATASOURCE'
+            }, {
+                'create': 'CREATE DATABASE',
+                'drop': 'DROP DATABASE'
+            }, {
+                'create': 'CREATE DATABASE',
+                'drop': None
+            }
+        ]
         for db_type, db_creds in self.sql_db_creds.items():
-            queries = [
-                {
-                    'create': 'CREATE DATASOURCE',
-                    'drop': 'DROP DATASOURCE'
-                }, {
-                    'create': 'CREATE DATABASE',
-                    'drop': 'DROP DATABASE'
-                }, {
-                    'create': 'CREATE DATABASE',
-                    'drop': None
-                }
-            ]
             for query in queries:
                 create_query = query['create']
                 drop_query = query['drop']

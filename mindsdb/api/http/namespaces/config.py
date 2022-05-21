@@ -42,7 +42,9 @@ class GetLogs(Resource):
 class ListIntegration(Resource):
     def get(self):
         return {
-            'integrations': [k for k in request.integration_controller.get_all(sensitive_info=False)]
+            'integrations': list(
+                request.integration_controller.get_all(sensitive_info=False)
+            )
         }
 
 
@@ -51,8 +53,7 @@ class ListIntegration(Resource):
 class AllIntegration(Resource):
     @ns_conf.doc('get_all_integrations')
     def get(self):
-        integrations = request.integration_controller.get_all(sensitive_info=False)
-        return integrations
+        return request.integration_controller.get_all(sensitive_info=False)
 
 
 @ns_conf.route('/integrations/<name>')
@@ -69,10 +70,10 @@ class Integration(Resource):
     @ns_conf.doc('put_integration')
     def put(self, name):
         params = {}
-        params.update((request.json or {}).get('params', {}))
-        params.update(request.form or {})
+        params |= (request.json or {}).get('params', {})
+        params |= (request.form or {})
 
-        if len(params) == 0:
+        if not params:
             abort(400, "type of 'params' must be dict")
 
         # params from FormData will be as text
@@ -163,8 +164,8 @@ class Integration(Resource):
     @ns_conf.doc('modify_integration')
     def post(self, name):
         params = {}
-        params.update((request.json or {}).get('params', {}))
-        params.update(request.form or {})
+        params |= (request.json or {}).get('params', {})
+        params |= (request.form or {})
 
         if not isinstance(params, dict):
             abort(400, "type of 'params' must be dict")
@@ -200,16 +201,8 @@ class Check(Resource):
 @ns_conf.route('/vars')
 class Vars(Resource):
     def get(self):
-        if os.getenv('CHECK_FOR_UPDATES', '1').lower() in ['0', 'false']:
-            telemtry = False
-        else:
-            telemtry = True
-
-        if ca.config_obj.get('disable_mongo', False):
-            mongo = False
-        else:
-            mongo = True
-
+        telemtry = os.getenv('CHECK_FOR_UPDATES', '1').lower() not in ['0', 'false']
+        mongo = not ca.config_obj.get('disable_mongo', False)
         cloud = ca.config_obj.get('cloud', False)
         local_time = datetime.datetime.now(tzlocal())
         local_timezone = local_time.tzname()
@@ -268,11 +261,11 @@ class InstallDependencies(Resource):
         if code != 0:
             output = ''
             if isinstance(outs, bytes) and len(outs) > 0:
-                output = output + 'Output: ' + outs.decode()
+                output = f'{output}Output: {outs.decode()}'
             if isinstance(errs, bytes) and len(errs) > 0:
-                if len(output) > 0:
-                    output = output + '\n'
-                output = output + 'Errors: ' + errs.decode()
+                if output != '':
+                    output += '\n'
+                output = f'{output}Errors: {errs.decode()}'
             return http_error(500, 'Failed to install dependency', output)
 
         return 'Installed', 200

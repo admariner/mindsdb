@@ -23,8 +23,7 @@ class SqlServerHandler(DatabaseHandler):
         """
         Handles the connection to a SQL Server insance.
         """
-        connection = pymssql.connect(**self.connection_args)
-        return connection
+        return pymssql.connect(**self.connection_args)
 
     def check_status(self):
         """
@@ -55,8 +54,7 @@ class SqlServerHandler(DatabaseHandler):
             with con.cursor(as_dict=True) as cur:
                 try:
                     res = cur.execute(query)
-                    result = cur.fetchall()  
-                    if result:                                  
+                    if result := cur.fetchall():
                         response = {
                             'type': RESPONSE_TYPE.TABLE,
                             'data_frame': pd.DataFrame(
@@ -82,25 +80,22 @@ class SqlServerHandler(DatabaseHandler):
         Get a list with all of the tabels in MySQL
         """
         q = f"SELECT * FROM {self.database}.INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE';"
-        result = self.native_query(q)
-        return result
+        return self.native_query(q)
 
     def get_views(self):
         """
         Get more information about specific database views
         """
         #TODO: check what info we need for views
-        q = f"SELECT * FROM sys.views;"
-        result = self.native_query(q)
-        return result
+        q = "SELECT * FROM sys.views;"
+        return self.native_query(q)
 
     def describe_table(self, table_name):
         """
         Show details about the table
         """
         q = f"SELECT * FROM information_schema.columns WHERE table_name = '{table_name}';"
-        result = self.native_query(q)
-        return result
+        return self.native_query(q)
 
 
     def query(self, query):

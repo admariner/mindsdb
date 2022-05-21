@@ -28,8 +28,7 @@ class PostgresHandler(DatabaseHandler):
         """
         # TODO: Check psycopg_pool
         self.connection_args['dbname'] = self.database
-        connection = psycopg.connect(**self.connection_args, connect_timeout=10)
-        return connection
+        return psycopg.connect(**self.connection_args, connect_timeout=10)
 
     def check_status(self):
         """
@@ -89,16 +88,14 @@ class PostgresHandler(DatabaseHandler):
         """
         query = "SELECT * FROM information_schema.tables WHERE \
                  table_schema NOT IN ('information_schema', 'pg_catalog')"
-        res = self.native_query(query)
-        return res
+        return self.native_query(query)
 
     def get_views(self):
         """
         List all views in PostgreSQL without the system views information_schema and pg_catalog
         """
         query = "SELECT * FROM information_schema.views WHERE table_schema NOT IN ('information_schema', 'pg_catalog')"
-        result = self.native_query(query)
-        return result
+        return self.native_query(query)
 
     def describe_table(self, table_name):
         """
@@ -106,8 +103,7 @@ class PostgresHandler(DatabaseHandler):
         """
         query = f"SELECT table_name, column_name, data_type FROM \
               information_schema.columns WHERE table_name='{table_name}';"
-        result = self.native_query(query)
-        return result
+        return self.native_query(query)
 
     def query(self, query):
         """

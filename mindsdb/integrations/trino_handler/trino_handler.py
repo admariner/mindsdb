@@ -54,16 +54,15 @@ class TrinoHandler(DatabaseHandler):
         """"
         Handles the connection to a Trino instance.
         """
-        conn = connect(
+        return connect(
             host=self.host,
             port=self.port,
             user=self.user,
             catalog=self.catalog,
             schema=self.schema,
             http_scheme=self.http_scheme,
-            auth=self.auth_config
+            auth=self.auth_config,
         )
-        return conn
 
     def check_status(self):
         """
@@ -97,8 +96,7 @@ class TrinoHandler(DatabaseHandler):
         try:
             conn = self.__connect()
             cur = conn.cursor()
-            result = cur.execute(query)
-            if result:
+            if result := cur.execute(query):
                 response = {
                     'type': RESPONSE_TYPE.TABLE,
                     'data_frame': pd.DataFrame(
@@ -135,8 +133,7 @@ class TrinoHandler(DatabaseHandler):
 
     def describe_table(self, table_name: str) -> Dict:
         query = f'DESCRIBE "{table_name}"'
-        res = self.native_query(query)
-        return res
+        return self.native_query(query)
 
     # TODO: complete the implementations
     def query(self, query: ASTNode) -> dict:

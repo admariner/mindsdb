@@ -11,8 +11,10 @@ class PostgreSQLConnectionChecker:
         self.database = kwargs.get('database', 'postgres')
 
     def _get_connection(self):
-        conn = psycopg.connect(f'host={self.host} port={self.port} dbname={self.database} user={self.user} password={self.password}', connect_timeout=10)
-        return conn
+        return psycopg.connect(
+            f'host={self.host} port={self.port} dbname={self.database} user={self.user} password={self.password}',
+            connect_timeout=10,
+        )
 
     def check_connection(self):
         try:
