@@ -2,9 +2,10 @@ from pathlib import Path
 import json
 import pytest
 
-from mindsdb.api.mysql.mysql_proxy.libs.constants.response_type import RESPONSE_TYPE
+
+from mindsdb.api.executor.data_types.response_type import RESPONSE_TYPE
 from .conftest import CONFIG_PATH
-from .http_test_helpers import HTTPHelperMixin
+from tests.utils.http_test_helpers import HTTPHelperMixin
 
 
 # used by mindsdb_app fixture in conftest
@@ -22,7 +23,7 @@ WITH ENGINE = "postgres",
 PARAMETERS = {
     "user": "demo_user",
     "password": "demo_password",
-    "host": "3.220.66.106",
+    "host": "samples.mindsdb.com",
     "port": "5432",
     "database": "demo"
     }; """
@@ -63,7 +64,7 @@ JOIN mindsdb.home_rentals_model as m limit 100;
 FINETUNE mindsdb.home_rentals_model
 FROM example_db (
     SELECT * FROM demo_data.home_rentals
-);
+) using join_learn_process=true;
     """
 
 
